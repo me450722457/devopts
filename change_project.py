@@ -86,10 +86,11 @@ def get_volume_id(token, tenant_uuid, instance_uuid):
     req = requests.get(endpoint, headers=headers)
     res = req.json()
     volume_attachments = res["volumeAttachments"]
-    INSTANCE_VOLUME_IDS = []
+    instance_volume_ids = []
     for i in range(len(volume_attachments)):
-        INSTANCE_VOLUME_IDS.append(volume_attachments["volumeAttachments"][i]["id"])
-    return INSTANCE_VOLUME_IDS
+        instance_volume_ids.append(
+            volume_attachments["volumeAttachments"][i]["id"])
+    return instance_volume_ids
 
 
 def get_instance_net_info(token, tenant_uuid, instance_uuid):
@@ -109,7 +110,7 @@ def get_instance_net_info(token, tenant_uuid, instance_uuid):
     return instance_fixed_ip, instance_port_mac, instance_port_id, instance_net_id, instance_subnet_id
 
 
-def create_volume_snapshot(token, tenant_uuid, INSTANCE_VOLUME_IDS):
+def create_volume_snapshot(token, tenant_uuid, instance_volume_ids):
     endpoint = 'http://%s:8776/v2/%s/snapshots' % (saas_ip, tenant_uuid)
     payload = {
         "snapshot": {
@@ -120,10 +121,11 @@ def create_volume_snapshot(token, tenant_uuid, INSTANCE_VOLUME_IDS):
         }
     }
     snapshot_ids = []
-    for i in range(len(INSTANCE_VOLUME_IDS)):
-        payload["snapshot"]["name"] = INSTANCE_VOLUME_IDS[i] + "_snapshot"
-        payload["snapshot"]["volume_id"] = INSTANCE_VOLUME_IDS[i]
-        payload["snapshot"]["description"] = INSTANCE_VOLUME_IDS[i] + "_snapshot"
+    for i in range(len(instance_volume_ids)):
+        payload["snapshot"]["name"] = instance_volume_ids[i] + "_snapshot"
+        payload["snapshot"]["volume_id"] = instance_volume_ids[i]
+        payload["snapshot"][
+            "description"] = instance_volume_ids[i] + "_snapshot"
         headers = {'Content-type': 'application/json'}
         req = requests.post(
             endpoint, data=json.dumps(payload), headers=headers)
@@ -131,9 +133,20 @@ def create_volume_snapshot(token, tenant_uuid, INSTANCE_VOLUME_IDS):
     return snapshot_ids
 
 
-# jimingyu
-def create_volume(token, tenant_uuid, snapshot_ids):
-    pass
+#
+def create_volume(token, tenant_uuid, snapshot_ids, instance_name):
+    endpoint = 'http://%s:8776/v2/%s/volumes' % (saas_ip, tenant_uuid)
+    payload = {"volume": {"snapshot_id": "", "name": ""}}
+    headers = {'X-Auth-Token': token}
+    mid_volume_ids = []
+    for i in range(len(snapshot_ids)):
+        payload["volume"]["snapshot_id"] = snapshot_ids[i]
+        payload["volume"]["name"] = instance_name + "_" + i
+        req = requests.post(
+            endpoint, data=json.dumps(payload), headers=headers)
+        volume_id = req.json()["volume"]["id"]
+        mid_volume_ids.append(volume_id)
+    return mid_volume_ids
 
 
 def create_volume_transfer(token, tenant_uuid, from_snapshot_volume_id):
@@ -177,3 +190,17 @@ def accept_volume_transfer(token, tenant_uuid, transfer_dict):
         new_volume_id = res["transfer"]["volume_id"]
         new_volume_ids.append(new_volume_id)
 
+
+# 删除源port
+def delete_port(token, instance_port_id):
+    endpoint = 'http://%s:9696/v2.0/ports/%s' % (saas_ip, instance_port_id)
+    headers = {'X-Auth-Token': token}
+    requests.delete(endpoint, headers=headers)
+
+
+# 源虚拟机卸载port
+def delete_server_port(token, tenant_uuid, instance_uuid, instance_port_id):
+    endpoint = 'http://%s:8774/v2.1/%s/servers/%s/os-interface/%s' % (
+        saas_ip, tenant_uuid, instance_uuid, instance_port_id)
+    headers = {'X-Auth-Token': token}
+    requests.delete(endpoint, headers=headers)
