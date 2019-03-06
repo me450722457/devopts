@@ -129,7 +129,7 @@ def create_volume_snapshot(token, tenant_uuid, instance_volume_ids):
         headers = {'Content-type': 'application/json'}
         req = requests.post(
             endpoint, data=json.dumps(payload), headers=headers)
-        snapshot_ids.append = req.json()["snapshots"][i]["id"]
+        snapshot_ids.append(req.json()["snapshots"][i]["id"])
     return snapshot_ids
 
 
