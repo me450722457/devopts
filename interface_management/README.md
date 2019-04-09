@@ -275,3 +275,5 @@ Author Information
 ------------------
 
 Michaël Rigart <michael@netronix.be>
+
+forked from michaelrigart/ansible-role-interfaces <https://github.com/michaelrigart/ansible-role-interfaces>
