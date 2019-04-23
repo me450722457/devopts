@@ -255,7 +255,7 @@ add_1(10) 20
 time taken:  9.5367431640625e-07
 add_2(10) 20
 ```
-它们的作用是一样的，这就是`Python`装饰器的作用。它实现的作用类似于 `add = timer(add)`，只不过装饰器把句法放在函数上面，且句法更加简单`@timer`。现在你计算`sub`函数的运行时间，只需使用`timer`装饰器了。
+它们的作用是一样的，这就是`Python`装饰器的作用,保持原本的函数逻辑。它实现的作用类似于 `add = timer(add)`，只不过装饰器把句法放在函数上面，且句法更加简单`@timer`。现在你计算`sub`函数的运行时间，只需使用`timer`装饰器了。
 ```python
 @timer
 def sub(x, y=10):
@@ -263,7 +263,7 @@ def sub(x, y=10):
 ```
 
 #### 3. 参数和关键字参数
-现在，还有一个小问题没有解决。在`timer`函数中，我们将参数`x`和`y`写死了，即指定`y`的默认值为`10`。有一种方法可以传输该函数的参数和关键字参数，即`*args`和`**kwargs`。参数是函数的标准参数（在本例中`x`为参数），关键字参数是已具备默认值的参数（本例中是`y=10）。代码如下：
+现在，还有一个小问题没有解决。在`timer`函数中，我们将参数`x`和`y`写死了，即指定`y`的默认值为`10`。有一种方法可以传输该函数的参数和关键字参数，即`*args`和`**kwargs`。参数是函数的标准参数（在本例中`x`为参数），关键字参数是已具备默认值的参数（本例中是`y=10`）。代码如下：
 ```python
 from time import time
 def timer(func):
@@ -285,8 +285,89 @@ def sub(x, y=10):
 ```
 现在，该`timer`函数可以处理任意函数、任意参数和任意默认值设置了，因为它仅仅将这些参数传输到函数中。
 
-#### 4. 高阶装饰器
+#### 4. 装饰器高级用法
 你可能会疑惑：如果我们可以用一个函数包装另一个函数来添加有用的行为，那么我们可以再进一步吗？我们用一个函数包装另一个函数，再被另一个函数包装吗？
 
 可以！事实上，函数的深度可以随你的意。
-<a>https://www.liaoxuefeng.com/wiki/0014316089557264a6b348958f449949df42a6d3a2e542c000/0014318435599930270c0381a3b44db991cd6d858064ac0000</a>
+例如，你想写一个装饰器来执行某个函数n次。
+```python
+def ntimes(n):
+    def inner(f):
+        def wrapper(*args, **kwargs):
+            '''
+            wrapper
+            '''
+            for _ in range(n-1):
+                rv = f(*args, **kwargs)
+            return rv
+
+        return wrapper
+
+    return inner
+
+
+@ntimes(3)
+def add(x, y):
+    '''
+    add
+    '''
+    print(x + y)
+    return x + y
+
+
+print(add(10, 20))
+print(add.__doc__)
+print(add.__name__)
+
+Output：
+30
+30
+30
+
+            wrapper
+            
+wrapper
+```
+
+#### 5. 更完善的模板
+上面的运行结果有些出乎意料了。其实，`Python`装饰器在实现的时候，被装饰后的函数其实已经是另外一个函数了（函数名等函数属性会发生改变），为了不影响，`Python`的`functools`包中提供了一个叫`wraps`的`decorator`来消除这样的副作用。写一个`decorator`的时候，最好在实现之前加上`functools`的`wrap`，它能保留原有函数的名称和`doc string`。
+- 二层装饰器模板:
+  ```python
+  def 自定义函数名(func):
+      @wraps(func)
+      def wrapper(*args, **kwargs):
+          原本的函数逻辑 # 选择一种函数原本的逻辑
+          return func(*args, **kwargs)
+      return wrapper
+  ```
+- 三层装饰器带变量模板：
+  ```python
+  # a, b是自定义的参数
+  def 自定义的函数名(a, b):
+      def decorator(func):
+          @wraps(func)
+          def wrapper(*args, **kwargs):
+              a # 这里可以使用变量a, b
+              b
+              原本函数的逻辑 # 需要选择一种函数原本的逻辑
+          return wrapper
+      return decorator
+  ```
+
+这里还有两个Tips：
+- 1. 这种方式适用于先进行一些操作，再回到原函数
+  ```python
+  ...
+  return func(*args, **kwargs)
+  ```
+
+- 2. 这种方式适用于需要在执行函数后进行的操作
+  ```python
+  ...
+  func_res = func(*args, **kwargs)
+  ...
+  return func_res
+  ```
+
+  #### 6. 类装饰器
+  pass
